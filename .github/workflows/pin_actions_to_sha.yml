@@ -16,7 +16,7 @@ on:
         type: boolean
         default: true
       repo:
-        description: "Only this repository (leave empty for the script's full list)"
+        description: "Only this one repository, e.g. movement (leave empty for the script's full list)"
         type: string
         default: ""
       reviewer:
@@ -53,7 +53,10 @@ jobs:
         env:
           REPO: ${{ inputs.repo }}
         run: |
-          if [[ -n "$REPO" ]]; then
+          if [[ "$REPO" == *[,[:space:]]* ]]; then
+            echo "::error::'repo' must be a single repository name, got '$REPO'"
+            exit 1
+          elif [[ -n "$REPO" ]]; then
             echo "repos=$REPO" >> "$GITHUB_OUTPUT"
           else
             echo "repos=$(./bash/pin_actions_to_sha.sh --list-repos)" >> "$GITHUB_OUTPUT"
