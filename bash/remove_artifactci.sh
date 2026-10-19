@@ -38,6 +38,8 @@ log()  { echo "[INFO]  $*"; }
 warn() { echo "[WARN]  $*" >&2; }
 die()  { echo "[ERROR] $*" >&2; exit 1; }
 
+[[ "$ONLY_REPO" == *[,[:space:]]* ]] && die "--repo takes a single repository name, got '$ONLY_REPO'"
+
 command -v git &>/dev/null || die "git not found in PATH"
 command -v awk &>/dev/null || die "awk not found in PATH"
 if [[ "$DRY_RUN" != true ]]; then
@@ -196,8 +198,16 @@ ${leftovers}
         warn "Nothing staged - skipping $repo."
         return 0
     fi
-    git -C "$repo_dir" commit --quiet -m "$COMMIT_MSG"
-    git -C "$repo_dir" push --quiet origin "$BRANCH"
+    if ! git -C "$repo_dir" commit --quiet -m "$COMMIT_MSG"; then
+        warn "Commit failed for $repo - skipping."
+        cleanup_branch "$repo_dir" "$base"
+        return 0
+    fi
+    if ! git -C "$repo_dir" push --quiet origin "$BRANCH"; then
+        warn "Push failed for $repo (does the token have write access?) - skipping."
+        cleanup_branch "$repo_dir" "$base"
+        return 0
+    fi
 
     # Open the PR
     local body
@@ -228,13 +238,14 @@ Tracked in ${ISSUE}"
     if gh pr create "${pr_args[@]}"; then
         log "PR opened for $repo."
     else
-        warn "PR creation failed for $repo."
+        warn "PR creation failed for $repo, but branch '$BRANCH' is already pushed. Open the PR by hand, or delete the branch and rerun:"
+        warn "    gh api -X DELETE repos/$ORG/$repo/git/refs/heads/$BRANCH"
     fi
 }
 
 log "Removing artifact.ci in $ORG (branch: $BRANCH, dry run: $DRY_RUN)"
 if [[ -n "$ONLY_REPO" ]]; then
-    process_repo "$ONLY_REPO"
+    process_repo "$ONLY_REPO" || warn "Unhandled error for $ONLY_REPO."
 else
     for repo in "${REPOS[@]}"; do
         process_repo "$repo" || warn "Unhandled error for $repo - continuing."
