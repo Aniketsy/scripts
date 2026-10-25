@@ -63,7 +63,7 @@ function is_item(s) { return s ~ /^ *[-*+] / }
 function block_end(i,    j, ind, cont) {
     ind = indent(L[i]); cont = (md && is_item(L[i])); j = i + 1
     while (j <= n && (blank(L[j]) || indent(L[j]) > ind || \
-                      (cont && indent(L[j]) == ind && !is_item(L[j]) && L[j] !~ /^ *#/)))
+                      (cont && !blank(L[j - 1]) && indent(L[j]) == ind && !is_item(L[j]) && L[j] !~ /^ *#/)))
         j++
     while (j - 1 > i && blank(L[j - 1])) j--
     return j - 1
