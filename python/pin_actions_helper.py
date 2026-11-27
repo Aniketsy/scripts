@@ -43,6 +43,10 @@ DEPENDABOT_ENTRY = """\
       github-actions:
         patterns: ["*"]
 """
+DEPENDABOT_REPOS = (
+    "neuroinformatics-unit/dashboard",
+    "brainglobe/brainglobe.github.io",
+)
 
 
 def tracked_files(repo: Path) -> list[Path]:
@@ -223,8 +227,8 @@ def cmd_dependabot(args: argparse.Namespace) -> None:
     if config_file is None:
         config = f"version: 2\nupdates:\n{entry}"
         pypi = publishes_to_pypi(repo, files)
-        website = repo.resolve().name.lower().endswith(".github.io")
-        if args.add == "always" or (args.add == "auto" and (pypi or website)):
+        listed = args.name.lower() in DEPENDABOT_REPOS
+        if args.add == "always" or (args.add == "auto" and (pypi or listed)):
             target = repo / DEPENDABOT_FILE
             target.parent.mkdir(exist_ok=True)
             target.write_bytes(config.encode("utf-8"))
@@ -233,8 +237,11 @@ def cmd_dependabot(args: argparse.Namespace) -> None:
                     "this repository publishes to PyPI, so an outdated or "
                     "compromised action here would affect our users"
                 )
-            elif website:
-                reason = "this is the organisation's website, and its CI runs often"
+            elif listed:
+                reason = (
+                    "its scheduled jobs use third-party actions with secrets "
+                    "or write access"
+                )
             else:
                 reason = "requested when running the script"
             print(
@@ -289,6 +296,7 @@ def main() -> None:
 
     dependabot = commands.add_parser("dependabot")
     dependabot.add_argument("repo", type=Path)
+    dependabot.add_argument("--name", default="", help="org/repo")
     dependabot.add_argument(
         "--add", choices=("auto", "always", "never"), default="auto"
     )

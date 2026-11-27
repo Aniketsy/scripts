@@ -3,8 +3,8 @@
 #   - third-party actions are pinned to commit SHAs
 #   - our own actions are moved to their latest major version tag (e.g. @v3)
 #   - a Dependabot config is added if missing, for repositories that publish
-#     to PyPI and for the organisation's website. Other repositories get a
-#     suggested config in the PR body.
+#     to PyPI and a few others (DEPENDABOT_REPOS in the Python helper). Other
+#     repositories get a suggested config in the PR body.
 #
 # Requires git, gh, uv and pinact.
 #
@@ -301,7 +301,7 @@ process_repo() {
         fi
         [[ -n "$more" ]] && leftovers+="${leftovers:+$'\n'}$more"
     fi
-    if ! dependabot="$(uv run --quiet "$HELPER" dependabot "$repo_dir" --add "$ADD_DEPENDABOT")"; then
+    if ! dependabot="$(uv run --quiet "$HELPER" dependabot "$repo_dir" --name "$ORG/$repo" --add "$ADD_DEPENDABOT")"; then
         fail "$repo" "Dependabot check failed"
         cleanup_branch "$repo_dir" "$base"
         return 0
